@@ -114,13 +114,13 @@ function render(){
 function m(){const x=msg;msg=null;return x?`<div class="flash ${x.c}">${esc(x.t)}</div>`:""}
 function go(t){tab=t;render()}
 function vKas(u){
- const ws=minggu(),now=senin();let lunas=0,tung=0;
- const cards=ws.map(w=>{const s=status(me,w);if(s==="LUNAS")lunas+=amtOf(me,w);if(s==="BELUM"&&w<=now)tung+=S.set.nominal;
+ const ws=minggu(),now=senin();let lunas=0,tung=0,nb=0;
+ const cards=ws.map(w=>{const s=status(me,w);if(s==="LUNAS")lunas+=amtOf(me,w);if(s==="BELUM"){nb++;if(w<=now)tung+=S.set.nominal}
   if(s==="BELUM")return `<div class="month due ${w==now?'now':''}" onclick="tapCard(event,'${w}')"><label class="chk"><input type="checkbox" name="w" value="${w}" onchange="upd()"><span>${labelMinggu(w)}</span></label><em>${w==now?'Minggu ini · ':w>now?'Bayar di muka · ':''}Tagihan ${rp(S.set.nominal)}</em><input class="amt" type="number" min="1" step="500" id="a_${w}" value="${S.set.nominal}" disabled oninput="upd()" aria-label="Jumlah dibayar"></div>`;
   return `<div class="month ${s=='LUNAS'?'paid':'wait'}"><span>${labelMinggu(w)}</span><em>${s=='LUNAS'?'Lunas':'Menunggu konfirmasi'} · ${rp(amtOf(me,w))}</em></div>`}).join("");
  const rw=S.bayar.filter(p=>p.nim===me).reverse();
  return `<h1>Halo, ${esc(u[1].toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()))}</h1><p class="muted">${esc(emailOf(me)||"")} · NIM ${me} · Kelas E · Kas ${rp(S.set.nominal)}/minggu · <button class="lnk" onclick="gantiPw()">Ganti password</button></p>
- <div class="stats"><div class="card stat"><span>Sudah dibayar</span><b class="ok-t">${rp(lunas)}</b></div><div class="card stat"><span>Belum dibayar</span><b class="${tung?'bad-t':''}">${rp(tung)}</b></div></div>
+ <div class="stats"><div class="card stat"><span>Sudah dibayar</span><b class="ok-t">${rp(lunas)}</b></div><div class="card stat"><span>Belum dibayar</span><b class="${nb?'bad-t':''}">${rp(nb*S.set.nominal)}</b><span style="margin-top:2px;font-size:.8rem">${nb} minggu × ${rp(S.set.nominal)}${tung?` · sudah jatuh tempo ${rp(tung)}`:''}</span></div></div>
  <div class="card"><h2>Sudah bayar cash ke bendahara?</h2><p class="muted">Centang minggu yang sudah kamu bayar cash ke bendahara (${esc(S.set.bendahara)}), lalu isi jumlah yang kamu bayar.</p>
  <div class="months">${cards}</div><div class="pay"><p>Dicentang: <b id="tot">Rp 0</b></p><button class="btn" id="sv" onclick="bayar()" disabled>Simpan, saya sudah bayar</button></div></div>
  <div class="card"><h2>Riwayat</h2>${rw.length?`<div class="scroll"><table><tr><th>Waktu</th><th>Kode</th><th>Minggu</th><th>Jumlah</th><th>Status</th></tr>${rw.map(p=>`<tr><td>${p.waktu}</td><td>${p.kode}</td><td>${labelMinggu(p.minggu)}</td><td>${rp(p.nominal)}</td><td><span class="tag ${p.status}">${p.status}</span></td></tr>`).join("")}</table></div>`:'<p class="muted">Belum ada pembayaran.</p>'}</div>`}
@@ -139,11 +139,11 @@ function bayar(){const ws=[...document.querySelectorAll("input[name=w]:checked")
  flash(n?(S.set.verif?`Tercatat ${n} minggu (${k}). Menunggu konfirmasi bendahara.`:`Tercatat lunas ${n} minggu (${k}). Terima kasih!`):"Minggu itu sudah tercatat.",n?"":"err");render()}
 
 function vAdmin(){
- const ws=minggu(),now=senin();let tot=0,tung=0,wait=0;
- MHS.forEach(([nim])=>ws.forEach(w=>{const s=status(nim,w);if(s==="LUNAS")tot+=amtOf(nim,w);else if(s==="MENUNGGU")wait++;else if(w<=now)tung+=S.set.nominal}));
+ const ws=minggu(),now=senin();let tot=0,tung=0,wait=0,all=0;
+ MHS.forEach(([nim])=>ws.forEach(w=>{const s=status(nim,w);if(s==="LUNAS")tot+=amtOf(nim,w);else if(s==="MENUNGGU")wait++;else{all+=S.set.nominal;if(w<=now)tung+=S.set.nominal}}));
  const list=MHS.filter(([n,nm])=>!q||nm.includes(q.toUpperCase())||n.includes(q));
  return `<h1>Dashboard Admin</h1><p class="muted">Bendahara: ${esc(S.set.bendahara)} · <button class="lnk" onclick="xlsx()">Unduh Excel</button></p>
- <div class="stats"><div class="card stat"><span>Total terkumpul</span><b class="ok-t">${rp(tot)}</b></div><div class="card stat"><span>Tunggakan (s.d. minggu ini)</span><b class="bad-t">${rp(tung)}</b></div><div class="card stat"><span>Menunggu konfirmasi</span><b>${wait}</b></div></div>
+ <div class="stats"><div class="card stat"><span>Total terkumpul</span><b class="ok-t">${rp(tot)}</b></div><div class="card stat"><span>Belum dibayar (semua minggu)</span><b class="bad-t">${rp(all)}</b></div><div class="card stat"><span>Tunggakan (s.d. minggu ini)</span><b class="bad-t">${rp(tung)}</b></div><div class="card stat"><span>Menunggu konfirmasi</span><b>${wait}</b></div></div>
  <div class="card"><h2>Status per mahasiswa</h2><div class="filter"><input value="${esc(q)}" placeholder="Cari nama / NIM" oninput="q=this.value;clearTimeout(window.t);window.t=setTimeout(()=>{render();const i=document.querySelector('.filter input');i.focus();i.setSelectionRange(q.length,q.length)},250)"></div>
  <p class="muted small">Klik sel: belum → catat lunas cash · menunggu (…) → konfirmasi · lunas (✓) → batalkan. Kolom = minggu ke-1, 2, dst (arahkan kursor untuk tanggal).</p>
  <div class="scroll"><table class="grid"><tr><th>Nama</th><th>NIM</th>${ws.map((w,i)=>`<th title="${labelMinggu(w)}">${i+1}</th>`).join("")}</tr>
